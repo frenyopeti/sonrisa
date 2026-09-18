@@ -11,6 +11,7 @@ out/
 ### Maven / Gradle Build ###
 target/
 build/
+.gradle/
 
 
 ### Eclipse ###
