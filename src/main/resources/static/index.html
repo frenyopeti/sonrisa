@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alerting System - Admin & Monitoring Dashboard</title>
+    <!-- suppress HtmlUnknownTarget -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body { background-color: #f8f9fa; padding: 20px; }
+        .card { margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        /* noinspection CssUnusedSymbol */
+        .status-badge-SUCCESS { color: #198754; font-weight: bold; }
+        /* noinspection CssUnusedSymbol */
+        .status-badge-FAILED { color: #dc3545; font-weight: bold; }
+    </style>
+</head>
+<body>
+<div class="container-fluid">
+    <h1 class="mb-4">⚡ Alerting System - Admin View & Monitoring</h1>
+
+    <div class="row">
+        <!-- Manual Event Trigger Panel -->
+        <div class="col-md-5">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">🚀 Manual Event Trigger Panel</h5>
+                </div>
+                <div class="card-body">
+                    <form id="triggerForm">
+                        <div class="mb-3">
+                            <label for="category" class="form-label">Event Category</label>
+                            <select id="category" class="form-select">
+                                <option value="BREAKING_NEWS">BREAKING_NEWS</option>
+                                <option value="MARKET_MOVEMENT">MARKET_MOVEMENT</option>
+                                <option value="NATURAL_DISASTER">NATURAL_DISASTER</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="severity" class="form-label">Severity Level</label>
+                            <select id="severity" class="form-select">
+                                <option value="LOW">LOW</option>
+                                <option value="MEDIUM">MEDIUM</option>
+                                <option value="HIGH">HIGH</option>
+                                <option value="CRITICAL">CRITICAL</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Title</label>
+                            <input type="text" id="title" class="form-control" value="System Latency Spike" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="summary" class="form-label">Summary</label>
+                            <textarea id="summary" class="form-control" rows="2">API response times exceeded 2000ms threshold.</textarea>
+                        </div>
+                        <button type="button" onclick="sendEvent()" class="btn btn-success w-100">Send Alert Event</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Audit Log View -->
+        <div class="col-md-7">
+            <div class="card">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">📋 Delivery Audit Logs</h5>
+                    <button type="button" onclick="loadLogs()" class="btn btn-sm btn-outline-light">Refresh</button>
+                </div>
+                <div class="card-body">
+                    <table class="table table-hover table-striped">
+                        <thead>
+                        <tr>
+                            <th scope="col">Dispatched At</th>
+                            <th scope="col">Channel</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Error / Info</th>
+                        </tr>
+                        </thead>
+                        <tbody id="logsTable">
+                        <tr><td colspan="4" class="text-center">Loading logs...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function sendEvent() {
+        const payload = {
+            category: document.getElementById('category').value,
+            severity: document.getElementById('severity').value,
+            title: document.getElementById('title').value,
+            summary: document.getElementById('summary').value,
+            occurredAt: new Date().toISOString()
+        };
+
+        await fetch('/api/v1/admin/trigger-event', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        setTimeout(loadLogs, 300);
+    }
+
+    async function loadLogs() {
+        try {
+            const res = await fetch('/api/v1/admin/audit-logs');
+            const logs = await res.json();
+            const tbody = document.getElementById('logsTable');
+            tbody.innerHTML = '';
+
+            if (logs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No audit logs found yet. Send an event!</td></tr>';
+                return;
+            }
+
+            logs.forEach(log => {
+                const statusClass = log.status === 'SUCCESS' ? 'status-badge-SUCCESS' : 'status-badge-FAILED';
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${new Date(log.dispatchedAt).toLocaleTimeString()}</td>
+                        <td><span class="badge bg-secondary">${log.channel}</span></td>
+                        <td class="${statusClass}">${log.status}</td>
+                        <td>${log.errorMessage || 'OK'}</td>
+                    </tr>
+                `;
+            });
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    setInterval(loadLogs, 3000);
+    loadLogs();
+</script>
+</body>
+</html>
