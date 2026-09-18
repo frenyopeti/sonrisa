@@ -27,13 +27,12 @@ public class EventIngestionService {
 
     @Transactional
     public EventLog processIncomingEvent(EventLog event) {
-        // 1. Esemény mentése az adatbázisba
         EventLog savedEvent = eventLogRepository.save(event);
 
-        // 2. Aktív szabályok lekérése az adott kategóriára
         List<AlertRule> matchingRules = alertRuleRepository.findByCategoryAndActiveTrue(event.getCategory());
+        System.out.printf("[INGESTION] Esemény fogadva: %s | Talált szabályok száma: %d%n", 
+                event.getTitle(), matchingRules.size());
 
-        // 3. Notification Payload előállítása
         NotificationPayload payload = new NotificationPayload(
                 savedEvent.getId().toString(),
                 savedEvent.getCategory(),
@@ -43,9 +42,9 @@ public class EventIngestionService {
                 savedEvent.getOccurredAt()
         );
 
-        // 4. Szabályok szűrése súlyosság szerint és kiküldés
         for (AlertRule rule : matchingRules) {
             if (event.getSeverity().ordinal() >= rule.getMinSeverity().ordinal()) {
+                System.out.println("[INGESTION] Értesítés kiküldése szabály alapján: " + rule.getId());
                 alertDispatchService.dispatchToRule(savedEvent.getId(), rule, payload);
             }
         }

@@ -322,3 +322,61 @@ A végleges, figyelmeztetés-mentes index.html
 Másold be és futtasd ezt a PowerShell scriptet az IntelliJ Terminal ablakában:...
 
 ---
+>tesztelés:
+Manual Event Trigger Panel panel jól működik, de a jobb oldali  Delivery Audit Logs felületen nem látok semmit, pedig küldtem alertet manuálisan
+
+Ez a jelenség a Spring Boot tesztadat-kezdőértékek (AlertRule) hiánya miatt fordul elő.
+Amikor beküldesz egy eseményt a Manual Event Trigger Panel-en keresztül, a rendszer keresi a hozzá illeszkedő szabályokat (AlertRule). Ha az adatbázisban még nincs egyetlen szabály sem az adott kategóriára és súlyossági szintre, a motor nem továbbítja az értesítést egyetlen csatornára sem – így DeliveryLog bejegyzés sem keletkezik.
+Hozzuk létre a kezdő szabályokat és a hibakeresést segítő naplózást egyetlen parancssorral!
+A Megoldás (3 Lépésben)
+Futtasd ezt a PowerShell scriptet az IntelliJ Terminal-jában! Ez létrehozza a DataInitializer osztályt (ami automatikusan feltölti az adatbázist szabályokkal az indításkor), és frissíti a EventIngestionService-t egy kis konzol-naplózással:
+...
+
+---
+
+>így már jó, megjelent az audit lognál is mindkettő, a slack és az email is
+De kell még integrációs és end-to-end teszt
+
+Nagyszerű hírek! Ez igazolja, hogy a teljes aszinkron pipeline — a REST API fogadástól a szabályillesztésen és a CompletableFuture alapú csatorna-kiküldésen át az adatbázis audit naplózásáig — tökéletesen működik.
+Ahhoz, hogy a projekt élesítésre kész, professzionális szintű legyen, a manuális felületi tesztelésen túl szükség van automatizált integrációs tesztekre és egy rövid folyamat-értékelésre (Post-Mortem).
+1. Integrációs és End-to-End Teszt (AlertSystemIntegrationTest.java)
+   Ez a teszt Spring Boot környezetben (@SpringBootTest) szimulál egy teljes folyamatot: beküld egy eseményt a szerviznek, és megvárja, hogy az aszinkron feladatok lefussanak és az adatbázisban megjelenjenek a DeliveryLog bejegyzések.
+Futtasd ezt a parancsot a PowerShell-ben a tesztosztály létrehozásához:
+...
+---
+
+>C:\Users\user\IdeaProjects\sonrisa\src\test\java\com\example\alerting\AlertSystemIntegrationTest.java:59: error: cannot find symbol
+        event.setCategory(EventCategory.BREAKING_NEWS);
+symbol:   method setCategory(EventCategory)
+location: variable event of type EventLog 
+
+A hiba oka, hogy az EventLog osztályban nem a setCategory(...) setter metódus szerepel, vagy az entitás mezői konstruktoron keresztül érhetők el.
+Frissítsük az AlertSystemIntegrationTest.java fájlt úgy, hogy az EventLog entitást közvetlenül a konstruktorával vagy a meglévő setterjeivel példányosítsuk.
+A Javított Integrációs Teszt Script
+...
+---
+
+>így már jó lett a teszt
+kell még valamilyen tisztázási és dokumentációs lépés?
+
+Gratulálok! Az integrációs tesztek sikeres lefutásával a projekt műszakilag teljes, működőképes és tesztelt.
+Igen, ezek a lépések:
+1. README.md frissítése (Dokumentáció)
+   Egy jó projekt dokumentációja tartalmazza a felépítést, az elindítási útmutatót és az API végpontokat.
+2. Gradle kód-ellenőrzés és tisztítás (clean test)
+      Győződjünk meg róla, hogy a build tiszta, nincsenek ideiglenes fájlok és minden teszt hibátlanul átmegy.
+3. Végleges Commit & Git Release Tag
+   Mentsük el a projekt végső állapotát a Git verziókezelőben egy egyértelmű commit üzenettel és verziótaggel:
+...
+---
+>build és teszt is lefut, működik minden, ellenőrizd, hogy megvan-e minden , itt az eredeti feladat:
+...
+
+Ez azt jelenti, hogy a működő Java/Spring Boot kód önmagában csak a felét éri az értékelésnek! A bírálók elsősorban azt vizsgálják, HOGYAN irányítottad az AI-t, milyen döntéseket hoztál, mit utasítottál vissza, és milyen dokumentációt hagytál magad után.
+Összegzés:
+A fentiek végrehajtása után a GitHub repository-dban minden elvárt elem megvan:
+1. Kód: Tiszta, működő Spring Boot projekt (Java 21, Strategy Pattern, @Async).
+2. Tesztek: Integrációs teszt (Awaitility-vel).
+3. Mérföldkövek (Git history): Tiszta commit üzenetek és release tag (v1.0.1).
+4. Folyamat-dokumentáció: README.md, PLAN.md, DECISION_LOG.md, PROMPTS.md.
+
